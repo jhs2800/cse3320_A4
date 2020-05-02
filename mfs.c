@@ -55,8 +55,83 @@
 
 #define MAX_NUM_ARGUMENTS 5     // Mav shell only supports five arguments
 
+uint16_t BPB_BytesPerSec;
+uint8_t BPB_SecPerClus;
+uint16_t BPB_RsvdSecCnt;
+uint8_t BPB_NumFATs;
+uint16_t BPB_RootEntCnt;
+uint32_t BPB_FATSz32;
+
+// **** Change names!!!!! 
+struct __attribute__((__packed__)) DirectoryEntry
+{
+  char DIR_Name[11];
+  uint9_t Dir_Attr;
+  uint8_t Unused1[8];
+  
+}
+
+struct DirectoryEntry directory[16];
+
 int main()
 {
+  FILE *fp;
+  fp - fopen ("fat32.img", "r");
+  if(!fp)
+  {
+    perror("Error. Could not open file.");
+    exit (1);
+  }
+
+  fseek(fp, 11, SEEK_SET);
+  fread(&BPB_BytesPerSec, 2, 1, fp);
+
+  fseek(fp, 13, SEEK_SET);
+  fread(&BPB_SecPerClus, 1, 1, fp);
+
+  fseek(fp, 14, SEEK_SET);
+  fread(&BPB_RsvdSecCnt, 2, 1, fp);
+
+  fseek(fp, 16, SEEK_SET);
+  fread(&BPB_NumFATs, 1, 1, fp);
+ 
+  fseek(fp, 17, SEEK_SET);
+  fread(&BPB_RootEntCnt, 1, 1, fp);
+
+  fseek(fp, 36, SEEK_SET);
+  fread(&BPB_FATSz32, 4, 1, fp);
+
+  printf("BPB_BytesPerSec: %d\n", BPB_BytesPerSec);
+  printf("BPB_BytesPerSec: %x\n", BPB_BytesPerSec);
+
+  printf("BPB_SecPerClus: %d\n", BPB_SecPerClus);
+  printf("BPB_SecPerClus: %x\n", BPB_SecPerClus);
+
+  printf("BPB_RsvdSecCnt: %d\n", BPB_RsvdSecCnt);
+  printf("BPB_RsvdSecCnt: %x\n", BPB_RsvdSecCnt);
+
+  printf("BPB_FATSz32: %d\n", BPB_FATSz32);
+  printf("BPB_FATSz32: %x\n", BPB_FATSz32);
+
+  printf("BPB_NumFATs: %d\n", BPB_NumFATs);
+  printf("BPB_NumFATs: %x\n", BPB_NumFATs);
+
+  // This is the 'ls' but it needs to be cleaned up.
+  // Go to root_cluster and SEEK_SET to go from the beginning.
+  // fread read 16 directory structures out of the file system.
+  fseek(fp, root_cluster, SEEK_SET);
+  fread(&directory[0], 16, sizeof(struct DirectoryEntry),fp);
+
+  int i;
+  for(i=0; i< 16; i++)
+  {
+    if
+    printf("File: %s\n", directory[i].DIR_Name);
+  }
+
+  fclose(fp);
+  return 0;
+
 
   char * cmd_str = (char*) malloc( MAX_COMMAND_SIZE );
 

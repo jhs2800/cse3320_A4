@@ -123,9 +123,12 @@ int main()
         token_count++;
     }
 
-    
+    // Now print the tokenized input as a debug check
+    // \TODO Remove this code and replace with your shell functionality
+
+
   FILE *fp;
-  fp - fopen ("fat32.img", "r");
+  fp = fopen ("fat32.img", "r");
   if(!fp)
   {
     perror("Error. Could not open file.");
@@ -165,6 +168,10 @@ int main()
   printf("BPB_NumFATs: %d\n", BPB_NumFATs);
   printf("BPB_NumFATs: %x\n", BPB_NumFATs);
 
+  // print root cluster
+  int root_cluster = (BPB_NumFATs * BPB_FATSz32 * BPB_BytesPerSec) + (BPB_RsvdSecCnt * BPB_BytesPerSec);
+  printf("Root directory location: %x\n", root_cluster);
+
   // This is the 'ls' but it needs to be cleaned up.
   // Go to root_cluster and SEEK_SET to go from the beginning.
   // fread read 16 directory structures out of the file system.
@@ -173,12 +180,14 @@ int main()
 
   int i;
   for(i=0; i< 16; i++)
-  { // Only print files or subdirectories. 
+  { // Only print files or subdirectories.
+    // And print low cluster. 
     if( dir[i].Dir_Attr = 0x01 || dir[i].Dir_Attr = 0x10 || dir[i].Dir_Attr = 0x20 )
     {
-      printf("File: %s\n", dir[i].DIR_Name);
+      printf("File: %s %d\n", dir[i].DIR_Name, dir[i].DIR_FirstClusterLow);
     }
   }
+
 
   fclose(fp);
   return 0;
@@ -186,8 +195,7 @@ int main()
 
   
 
-    // Now print the tokenized input as a debug check
-    // \TODO Remove this code and replace with your shell functionality
+    
 
     int token_index  = 0;
     for( token_index = 0; token_index < token_count; token_index ++ ) 

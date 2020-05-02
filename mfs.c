@@ -20,6 +20,22 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+// -------------------------------------------------------------------------
+
+/*
+* CSE 3320-003
+* Names: Jaehee Seh and Utibeabasi Eno Obot
+* ID #s: 1000942800 and 1001541097
+* Assignment 4: FAT32 File System
+* Description: You will implement a user space shell application that is 
+* capable of interpreting a FAT32 file system image. The utility must not 
+* corrupt the file system image and should be robust. No existing kernel 
+* code or any other FAT 32 utility code may be used in your program.
+*/
+
+// -------------------------------------------------------------------------
+
+
 #define _GNU_SOURCE
 
 #include <stdio.h>

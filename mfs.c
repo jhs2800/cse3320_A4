@@ -335,7 +335,7 @@ void get_file(char *filename)
 
   while(file_size > 0)
   {
-    int location = LBAToOffset(dir_cluster);
+    int location = OffBal_Sec(dir_cluster);
 		fseek(fp, location, SEEK_SET);
 		fread(&buffer[0],file_size,'1',of);
 		fwrite(&buffer[0],file_size,'1',rf);

@@ -72,12 +72,12 @@ FILE *of, *rf;
 int if_open;
 int close_f;
 
-uint16_t BPB_BytesPerSec;
-uint8_t BPB_SecPerClus;
-uint16_t BPB_RsvdSecCnt;
-uint8_t BPB_NumFATs;
-uint16_t BPB_RootEntCnt;
-uint32_t BPB_FATSz32;
+int16_t BPB_BytesPerSec;
+int8_t BPB_SecPerClus;
+int16_t BPB_RsvdSecCnt;
+int8_t BPB_NumFATs;
+int16_t BPB_RootEntCnt;
+int32_t BPB_FATSz32;
 
 // ************************************
 // **** Change names on all var !!! ******
@@ -124,17 +124,17 @@ void Info()
 
 int OffBal_Sec(int32_t sec)
 {
-  if ( sec == 0 )
-	return (sec * BPB_BytesPerSec) + (BPB_BytesPerSec * BPB_RsvdSecCnt) + (BPB_NumFATs * BPB_FATSz32 * BPB_BytesPerSec);
+  if (sec == 0)
+    return (sec * BPB_BytesPerSec) + (BPB_BytesPerSec * BPB_RsvdSecCnt) + (BPB_NumFATs * BPB_FATSz32 * BPB_BytesPerSec);
   return ((sec - 2) * BPB_BytesPerSec) + (BPB_BytesPerSec * BPB_RsvdSecCnt) + (BPB_NumFATs * BPB_FATSz32 * BPB_BytesPerSec);
 }
 
-int16_t Next_Sec( uint32_t sec)
+int16_t Next_Sec(uint32_t sec)
 {
   uint32_t address_FAT = (BPB_BytesPerSec * BPB_RsvdSecCnt) + (sec * 4);
   int16_t val;
   fseek(fp, address_FAT, SEEK_SET);
-  fread( &val, 2, 1, fp );
+  fread(&val, 2, 1, fp);
   return val;
 }
 
@@ -289,8 +289,8 @@ void Print_stat(char *fName)
   }
 }
 
-//This function shall retrieve the file from the FAT 32 image and 
-// place it in your current working directory. If the file or 
+//This function shall retrieve the file from the FAT 32 image and
+// place it in your current working directory. If the file or
 // directory does not exist then your program shall output “Error: File not found”.
 
 void get_file(char *filename)
@@ -301,48 +301,46 @@ void get_file(char *filename)
   int file_size = 0;
   int detected = 0;
   int dir_cluster, off_bal;
-  //rf = fp;
+  rf = fp;
 
-  for(i = 0; i < 16; i++)
+  for (i = 0; i < 16; i++)
   {
-    strncpy(temp_name,dir[i].DIR_Name,12);
+    strncpy(temp_name, dir[i].DIR_Name, 12);
     temp_name[11] = '\0';
 
-    if(strcmp(temp_name, expanded_name) == 0)
+    if (strcmp(temp_name, expanded_name) == 0)
     {
       detected = dir[i].DIR_FirstClusterLow;
       file_size = dir[i].DIR_FileSize;
       break;
-      
     }
   }
-  if(detected == 0)
+  if (detected == 0)
   {
     printf("Error: File not found.\n");
     continue;
   }
 
-	char buffer[512];
+  char buffer[512];
   dir_cluster = dir[i].DIR_FirstClusterLow;
   file_size = dir[i].DIR_FileSize;
   off_bal = OffBal_Sec(detected);
   fseek(rf, off_bal, SEEK_SET);
-  rf = fopen(token[1],"w");
-	fread(&buffer[0],512,'1',of);
-	fwrite(&buffer[0],512,'1',rf);
-	file_size = file_size-512;
-	strncpy(temp_name, token[1], 12);
-	rf = fopen(temp_name, "w");
+  rf = fopen(filename[1], "w");
+  fread(&buffer[0], 512, '1', of);
+  fwrite(&buffer[0], 512, '1', rf);
+  file_size = file_size - 512;
+  strncpy(temp_name, token[1], 12);
+  rf = fopen(temp_name, "w");
 
-  while(file_size > 0)
+  while (file_size > 0)
   {
     int location = LBAToOffset(dir_cluster);
-		fseek(fp, location, SEEK_SET);
-		fread(&buffer[0],file_size,'1',of);
-		fwrite(&buffer[0],file_size,'1',rf);
-		file_size = file_size - 512;
+    fseek(fp, location, SEEK_SET);
+    fread(&buffer[0], file_size, '1', of);
+    fwrite(&buffer[0], file_size, '1', rf);
+    file_size = file_size - 512;
   }
-
 }
 
 void cd(char *input)
@@ -355,26 +353,26 @@ void cd(char *input)
   char expanded_name[12];
   expanded_name[11] = '\0';
 
-  for(i = 0; i < 16; i++)
+  for (i = 0; i < 16; i++)
   {
     strncpy(temp_name, dir[i].DIR_Name, 12);
     temp_name[11] = '\0';
-    if(strcmp(expanded_name, temp_name) == 0)
+    if (strcmp(expanded_name, temp_name) == 0)
     {
       detected = dir[i].DIR_FirstClusterLow;
     }
   }
-  if(detected != -1)
+  if (detected != -1)
   {
     off_bal = OffBal_Sec(detected);
-		fseek(fp, off_bal, SEEK_SET);
-		
-    for(i = 0; i < 16; i++)
-		{
-			fread(&dir[i],sizeof(struct DirectoryEntry),1,fp);
-			memcpy(temp_name,dir[i].DIR_Name,11);
-			temp_name[11] = '\0';
-		}
+    fseek(fp, off_bal, SEEK_SET);
+
+    for (i = 0; i < 16; i++)
+    {
+      fread(&dir[i], sizeof(struct DirectoryEntry), 1, fp);
+      memcpy(temp_name, dir[i].DIR_Name, 11);
+      temp_name[11] = '\0';
+    }
   }
   else
   {
@@ -382,7 +380,7 @@ void cd(char *input)
   }
 }
 
-
+/*
 void read(char *input)
 { 
 	int i, place, byte_size;
@@ -410,7 +408,7 @@ void read(char *input)
 		char buffer[512];
 		off_bal = OffBal_Sec(detected) + place;
     dir_cluster = detected;
-		strncpy(temp_name, token[1],12);
+	//	strncpy(temp_name, token[1],12);
 		of = fopen(temp_name, "w");
 		size_file = size_file - 512;
 			
@@ -444,7 +442,7 @@ void read(char *input)
     fclose(of);
 			
 	}
-
+  */
 
 int main()
 {
@@ -545,6 +543,18 @@ int main()
         if (fp != NULL)
         {
           Print_stat(token[1]);
+        }
+        else
+        {
+          printf("Error: File system must be opened first.\n");
+        }
+      }
+
+      if (!strcmp(token[0], "cd"))
+      {
+        if (fp != NULL)
+        {
+          cd(token[1]);
         }
         else
         {

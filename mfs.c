@@ -21,6 +21,7 @@
 #include <errno.h>
 #include <string.h>
 #include <signal.h>
+#include <ctype.h>
 
 #define WHITESPACE " \t\n" // We want to split our command line up into tokens \
                            // so we need to define what delimits our tokens.   \
@@ -221,6 +222,55 @@ void ls_code()
     }
   }
 }
+//Taken from compare.c file
+void compare(char *fName, char *fullname)
+{
+
+  char expanded_name[12];
+  memset(expanded_name, ' ', 12);
+
+  char *token = strtok(fName, ".");
+  strncpy(expanded_name, token, strlen(token));
+  token = strtok(NULL, ".");
+  if (token)
+  {
+    strncpy((char *)(expanded_name + 8), token, strlen(token));
+  }
+  int i;
+  for (i = 0; i < 11; i++)
+  {
+    expanded_name[i] = toupper(expanded_name[i]);
+  }
+  strncpy(fullname, expanded_name, strlen(expanded_name));
+}
+
+void Print_stat(char *fName)
+{
+  int i;
+  char temp_name[12];
+  //Taken from compare.c
+  char expanded_name[12];
+  compare(fName, &expanded_name[0]);
+  expanded_name[11] = '\0';
+
+  for (i = 0; i < Entry_Len; i++)
+  {
+    memcpy(temp_name, dir[i].DIR_Name, 11);
+    temp_name[11] = '\0';
+
+    if (dir[i].Dir_Attr == 0x01 || dir[i].Dir_Attr == 0x10 || dir[i].Dir_Attr == 0x20)
+    {
+
+      if (strcmp(expanded_name, temp_name) == 0)
+      {
+
+        printf("Attribute:\t %d\t", dir[i].Dir_Attr);
+        printf("Size:\t %d\t", dir[i].DIR_FileSize);
+        printf("Starting Cluster Number: \t %d\t \n", dir[i].DIR_FirstClusterLow);
+      }
+    }
+  }
+}
 
 int main()
 {
@@ -309,6 +359,18 @@ int main()
         if (fp != NULL)
         {
           Print_Info();
+        }
+        else
+        {
+          printf("Error: File system must be opened first.\n");
+        }
+      }
+
+      if (!strcmp(token[0], "stat"))
+      {
+        if (fp != NULL)
+        {
+          Print_stat(token[1]);
         }
         else
         {

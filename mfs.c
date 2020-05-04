@@ -49,6 +49,8 @@ FILE *fp;
 #define Offset_BPB_FATSz32 36
 #define Siz_BPB_FATSz32 4
 
+#define Entry_Len 16
+
 /*
 #define BS_Vollab_Offset 71
 #define BS_Vollab_Size 11
@@ -122,19 +124,19 @@ void Print_Info()
 {
 
   printf("BPB_BytesPerSec: %d\n", BPB_BytesPerSec);
-  printf("BPB_BytesPerSec: %x\n", BPB_BytesPerSec);
+  printf("BPB_BytesPerSec: %x\n\n", BPB_BytesPerSec);
 
   printf("BPB_SecPerClus: %d\n", BPB_SecPerClus);
-  printf("BPB_SecPerClus: %x\n", BPB_SecPerClus);
+  printf("BPB_SecPerClus: %x\n\n", BPB_SecPerClus);
 
   printf("BPB_RsvdSecCnt: %d\n", BPB_RsvdSecCnt);
-  printf("BPB_RsvdSecCnt: %x\n", BPB_RsvdSecCnt);
-
-  printf("BPB_FATSz32: %d\n", BPB_FATSz32);
-  printf("BPB_FATSz32: %x\n", BPB_FATSz32);
+  printf("BPB_RsvdSecCnt: %x\n\n", BPB_RsvdSecCnt);
 
   printf("BPB_NumFATs: %d\n", BPB_NumFATs);
-  printf("BPB_NumFATs: %x\n", BPB_NumFATs);
+  printf("BPB_NumFATs: %x\n\n", BPB_NumFATs);
+
+  printf("BPB_FATSz32: %d\n", BPB_FATSz32);
+  printf("BPB_FATSz32: %x\n\n", BPB_FATSz32);
 }
 
 void close_Image()
@@ -177,7 +179,45 @@ void open_file(char *filename)
       if_open = 1;
       close_f = 0;
 
-      Info();
+      fseek(fp, Offset_BPB_BytesPerSec_, SEEK_SET);
+      fread(&BPB_BytesPerSec, Siz_BPB_BytesPerSec, 1, fp);
+
+      fseek(fp, Offset_BPB_SecPerClus, SEEK_SET);
+      fread(&BPB_SecPerClus, Siz_BPB_SecPerClus, 1, fp);
+
+      fseek(fp, Offset_BPB_RsvdSecCnt, SEEK_SET);
+      fread(&BPB_RsvdSecCnt, Siz_BPB_RsvdSecCnt, 1, fp);
+
+      fseek(fp, Offset_BPB_NumFAT, SEEK_SET);
+      fread(&BPB_NumFATs, Siz_BPB_NumFAT, 1, fp);
+
+      fseek(fp, Offset_BPB_RootEntCnt, SEEK_SET);
+      fread(&BPB_RootEntCnt, Siz_BPB_RootEntCnt, 1, fp);
+
+      fseek(fp, Offset_BPB_FATSz32, SEEK_SET);
+      fread(&BPB_FATSz32, Siz_BPB_FATSz32, 1, fp);
+
+      // print root cluster
+      int root_cluster = (BPB_NumFATs * BPB_FATSz32 * BPB_BytesPerSec) + (BPB_RsvdSecCnt * BPB_BytesPerSec);
+      fseek(fp, root_cluster, SEEK_SET);
+      fread(&dir[0], sizeof(struct DirectoryEntry), 16, fp);
+    }
+  }
+}
+
+void ls_code()
+{
+  int i;
+  for (i = 0; i < 16; i++)
+  {
+
+    if ((dir[i].Dir_Attr == 0x01 || dir[i].Dir_Attr == 0x10 || dir[i].Dir_Attr == 0x20 || dir[i].Dir_Attr == 0x30) && dir[i].DIR_Name[0] != 0xffffffe5)
+    {
+      char name[12];
+      memset(&name, 0, 12);
+
+      strncpy(name, dir[i].DIR_Name, 11);
+      printf("%s\n", name);
     }
   }
 }
@@ -257,7 +297,23 @@ int main()
       if (!strcmp(token[0], "close"))
       {
         close_Image();
-        //continue;
+        continue;
+      }
+
+      if (!strcmp(token[0], "ls"))
+      {
+        ls_code();
+      }
+      if (!strcmp(token[0], "info"))
+      {
+        if (fp != NULL)
+        {
+          Print_Info();
+        }
+        else
+        {
+          printf("Error: File system must be opened first.\n");
+        }
       }
     }
     free(working_root);

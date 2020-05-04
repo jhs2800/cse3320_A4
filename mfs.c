@@ -345,7 +345,7 @@ void get_file(char *filename)
 
 }
 
-void cd()
+void cd(char *input)
 {
   int i;
   int detected = 0;

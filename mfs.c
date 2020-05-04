@@ -72,13 +72,6 @@ FILE *of, *rf;
 int if_open;
 int close_f;
 
-int16_t BPB_BytesPerSec;
-int8_t BPB_SecPerClus;
-int16_t BPB_RsvdSecCnt;
-int8_t BPB_NumFATs;
-int16_t BPB_RootEntCnt;
-int32_t BPB_FATSz32;
-
 // ************************************
 // **** Change names on all var !!! ******
 // ************************************
@@ -94,6 +87,13 @@ struct __attribute__((__packed__)) DirectoryEntry
 };
 
 struct DirectoryEntry dir[16];
+
+uint16_t BPB_BytesPerSec;
+uint8_t BPB_SecPerClus;
+uint16_t BPB_RsvdSecCnt;
+uint8_t BPB_NumFATs;
+uint16_t BPB_RootEntCnt;
+uint32_t BPB_FATSz32;
 
 // This function deals with  printing out information about the file system in both hexadecimal and base 10//
 void Info()
@@ -318,7 +318,6 @@ void get_file(char *filename)
   if (detected == 0)
   {
     printf("Error: File not found.\n");
-    continue;
   }
 
   char buffer[512];
@@ -326,16 +325,16 @@ void get_file(char *filename)
   file_size = dir[i].DIR_FileSize;
   off_bal = OffBal_Sec(detected);
   fseek(rf, off_bal, SEEK_SET);
-  rf = fopen(filename[1], "w");
+  rf = fopen(filename, "w");
   fread(&buffer[0], 512, '1', of);
   fwrite(&buffer[0], 512, '1', rf);
   file_size = file_size - 512;
-  strncpy(temp_name, token[1], 12);
+  strncpy(temp_name, filename, 12);
   rf = fopen(temp_name, "w");
 
   while (file_size > 0)
   {
-    int location = LBAToOffset(dir_cluster);
+    int location = OffBal_Sec(dir_cluster);
     fseek(fp, location, SEEK_SET);
     fread(&buffer[0], file_size, '1', of);
     fwrite(&buffer[0], file_size, '1', rf);
@@ -380,69 +379,62 @@ void cd(char *input)
   }
 }
 
-/*
 void read(char *input)
-{ 
-	int i, place, byte_size;
+{
+  int i, place, byte_size;
   int detected = -1;
   int size_file = -1;
   char temp_name[12];
-  char expanded_name[12]; 
-	expanded_name[11] = '\0';
+  char expanded_name[12];
+  expanded_name[11] = '\0';
   int dir_cluster, off_bal;
-			
-	//int place = atoi(token[2]);
-	//int byte_size = atoi(token[3]);
 
-    for(i = 0; i < 16; i++)
-		{
-			strncpy(temp_name, dir[i].DIR_Name,12);
-			temp_name[11] = '\0';
-			if(strcmp(expanded_name, temp_name) == 0)
-			{
-				detected = dir[i].DIR_FirstClusterLow;
-				size_file = byte_size;
-			}
-		}
-			
-		char buffer[512];
-		off_bal = OffBal_Sec(detected) + place;
-    dir_cluster = detected;
-	//	strncpy(temp_name, token[1],12);
-		of = fopen(temp_name, "w");
-		size_file = size_file - 512;
-			
-		while(size_file > 512)
-		{
-			fseek(fp, off_bal, SEEK_SET);
-			fread(&buffer[0],1,512,fp);
-				
-			int j;
-				
-			for(j = 0; j < 512; j++)
-			{
-				printf(" %x ",buffer[j]);
-			}
-				size_file = size_file - 512;
-				dir_cluster = Next_Sec(dir_cluster);
-				off_bal = OffBal_Sec(dir_cluster);
-				
-		}
-		if(size_file > 0)
-		{
-      int k; 
-			fseek(fp, off_bal, SEEK_SET);
-			fread(&buffer[0], size_file, 1, fp);
-			for(k = 0; k < size_file; k++)
-			{
-				printf("%x ", buffer[k]);
-      }
-		}
-		
-    fclose(of);
-			
-	}
-  */
+  for (i = 0; i < 16; i++)
+  {
+    strncpy(temp_name, dir[i].DIR_Name, 12);
+    temp_name[11] = '\0';
+    if (strcmp(expanded_name, temp_name) == 0)
+    {
+      detected = dir[i].DIR_FirstClusterLow;
+      size_file = byte_size;
+    }
+  }
+
+  char buffer[512];
+  off_bal = OffBal_Sec(detected) + place;
+  dir_cluster = detected;
+  strncpy(temp_name, input, 12);
+  of = fopen(temp_name, "w");
+  size_file = size_file - 512;
+
+  while (size_file > 512)
+  {
+    fseek(fp, off_bal, SEEK_SET);
+    fread(&buffer[0], 1, 512, fp);
+
+    int j;
+
+    for (j = 0; j < 512; j++)
+    {
+      printf(" %x ", buffer[j]);
+    }
+    size_file = size_file - 512;
+    dir_cluster = Next_Sec(dir_cluster);
+    off_bal = OffBal_Sec(dir_cluster);
+  }
+  if (size_file > 0)
+  {
+    int k;
+    fseek(fp, off_bal, SEEK_SET);
+    fread(&buffer[0], size_file, 1, fp);
+    for (k = 0; k < size_file; k++)
+    {
+      printf("%x ", buffer[k]);
+    }
+  }
+
+  fclose(of);
+}
 
 int main()
 {
@@ -549,17 +541,17 @@ int main()
           printf("Error: File system must be opened first.\n");
         }
       }
-
       if (!strcmp(token[0], "cd"))
       {
-        if (fp != NULL)
-        {
-          cd(token[1]);
-        }
-        else
-        {
-          printf("Error: File system must be opened first.\n");
-        }
+        cd(token[1]);
+      }
+      if (!strcmp(token[0], "get"))
+      {
+        get_file(token[1]);
+      }
+      if (!strcmp(token[0], "read"))
+      {
+        read(token[1]);
       }
     }
     free(working_root);

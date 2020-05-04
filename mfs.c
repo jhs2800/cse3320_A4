@@ -301,7 +301,7 @@ void get_file(char *filename)
   int file_size = 0;
   int detected = 0;
   int dir_cluster, off_bal;
-  //rf = fp;
+  rf = fp;
 
   for(i = 0; i < 16; i++)
   {
@@ -326,11 +326,11 @@ void get_file(char *filename)
   file_size = dir[i].DIR_FileSize;
   off_bal = OffBal_Sec(detected);
   fseek(rf, off_bal, SEEK_SET);
-  //rf = fopen(token[1],"w");
+  rf = fopen(filename,"w");
 	fread(&buffer[0],512,'1',of);
 	fwrite(&buffer[0],512,'1',rf);
 	file_size = file_size-512;
-	//strncpy(temp_name, token[1], 12);
+	strncpy(temp_name, filename, 12);
 	rf = fopen(temp_name, "w");
 
   while(file_size > 0)
@@ -391,9 +391,6 @@ void read(char *input)
   char expanded_name[12]; 
 	expanded_name[11] = '\0';
   int dir_cluster, off_bal;
-			
-	//int place = atoi(token[2]);
-	//int byte_size = atoi(token[3]);
 
     for(i = 0; i < 16; i++)
 		{
@@ -409,7 +406,7 @@ void read(char *input)
 		char buffer[512];
 		off_bal = OffBal_Sec(detected) + place;
     dir_cluster = detected;
-		//strncpy(temp_name, token[1],12);
+		strncpy(temp_name,input,12);
 		of = fopen(temp_name, "w");
 		size_file = size_file - 512;
 			

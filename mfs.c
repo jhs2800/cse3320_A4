@@ -319,7 +319,6 @@ void get_file(char *filename)
   if(detected == 0)
   {
     printf("Error: File not found.\n");
-    continue;
   }
 
 	char buffer[512];
@@ -327,11 +326,11 @@ void get_file(char *filename)
   file_size = dir[i].DIR_FileSize;
   off_bal = OffBal_Sec(detected);
   fseek(rf, off_bal, SEEK_SET);
-  rf = fopen(token[1],"w");
+  //rf = fopen(token[1],"w");
 	fread(&buffer[0],512,'1',of);
 	fwrite(&buffer[0],512,'1',rf);
 	file_size = file_size-512;
-	strncpy(temp_name, token[1], 12);
+	//strncpy(temp_name, token[1], 12);
 	rf = fopen(temp_name, "w");
 
   while(file_size > 0)
@@ -410,7 +409,7 @@ void read(char *input)
 		char buffer[512];
 		off_bal = OffBal_Sec(detected) + place;
     dir_cluster = detected;
-		strncpy(temp_name, token[1],12);
+		//strncpy(temp_name, token[1],12);
 		of = fopen(temp_name, "w");
 		size_file = size_file - 512;
 			
@@ -550,6 +549,18 @@ int main()
         {
           printf("Error: File system must be opened first.\n");
         }
+      }
+      if (!strcmp(token[0], "cd"))
+      {
+        cd(token[1]);
+      }
+      if (!strcmp(token[0], "get"))
+      {
+        get_file(token[1]);
+      }
+      if (!strcmp(token[0], "read"))
+      {
+        read(token[1]);
       }
     }
     free(working_root);

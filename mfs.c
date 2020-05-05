@@ -33,6 +33,7 @@
 
 #define MAX_COMMAND_SIZE 255 // The maximum command-line size
 FILE *fp;
+FILE *of, *rf;
 
 #define MAX_NUM_ARGUMENTS 5 // Since Mav shell  supports five arguments only
 #define Offset_BPB_BytesPerSec_ 11
@@ -56,7 +57,6 @@ FILE *fp;
 #define Entry_Len 16
 
 #define MAX_FILE_NAME_SIZE 20
-
 #define MAX_NUM_ARGUMENTS 5
 #define WHITESPACE " \t\n"
 
@@ -138,6 +138,7 @@ void name(char *filename)
   }
 }
 
+//return the next logical block when given a LB
 int16_t NextLogicalBlock(int16_t sec)
 {
   uint32_t FATAddr = (BPB_RsvdSecCnt * BPB_BytesPerSec) + (sec * 4);
@@ -147,6 +148,7 @@ int16_t NextLogicalBlock(int16_t sec)
   return val;
 }
 
+//populate directory array through current directory address cluster
 void directory_pop(int address, struct DirectoryEntry *dir)
 {
   int counter;
@@ -163,7 +165,7 @@ void directory_pop(int address, struct DirectoryEntry *dir)
     fread(&dir[counter].DIR_FileSize, 4, 1, fp);
   }
 }
-
+//return an address of the cluster
 int LogicalBlockAdd(int32_t sec)
 {
   if (!sec)
@@ -182,6 +184,7 @@ int16_t Next_Sec(uint32_t sec)
 }
 */
 
+//print info aboput file system in both hexadecimal and base 10
 void Print_Info()
 {
 
@@ -220,6 +223,7 @@ void close_Image()
   }
 }
 
+//open a file. files should not contain spaces and will be limited to 100 char
 void open_file(char *filename)
 {
   if (if_open == 1)
@@ -268,6 +272,8 @@ void open_file(char *filename)
   }
 }
 
+//list directory contents and support listing . and ..
+//do not list deleted files or volume names
 void ls_code()
 {
   int i;
@@ -284,6 +290,7 @@ void ls_code()
     }
   }
 }
+
 //Taken from compare.c file
 void compare(char *fName, char *fullname)
 {
@@ -305,6 +312,7 @@ void compare(char *fName, char *fullname)
   }
   strncpy(fullname, expanded_name, strlen(expanded_name));
 }
+
 //Taken from compare.c file and used for cd function
 int cd_compare(char *fName, char *fullname)
 {
@@ -368,7 +376,6 @@ void Print_stat(char *fName)
 //This function shall retrieve the file from the FAT 32 image and
 // place it in your current working directory. If the file or
 // directory does not exist then your program shall output “Error: File not found”.
-
 void get_file(char *filename)
 {
   int i;
@@ -459,6 +466,7 @@ void cd(char *dir_name)
   }
 }
 
+//read a file at a given position and also output the number of bytes specified
 void readd(char *token)
 {
   //char * token;
@@ -476,6 +484,7 @@ void readd(char *token)
   int opened = 0;
   char buffer[513];
 
+  //if file isn't opened, output error
   if (!opened)
   {
     printf("File is not open.\n");
@@ -496,7 +505,8 @@ void readd(char *token)
     {
       break;
     }
-    name(temp_name);
+
+    //name(temp_name);
     directory_pop(holdAdd, dir_location);
     detected = 0;
     for (counter = 0; counter < 16; counter++)
@@ -508,13 +518,14 @@ void readd(char *token)
         break;
       }
     }
+
     if (!detected)
     {
       printf("Error: Invalid input.\n");
       return;
     }
   }
-  //make_file(temp_name);
+
   directory_pop(holdAdd, dir_location);
   detected = 0;
   for (counter = 0; counter < 16; counter++)
@@ -527,6 +538,7 @@ void readd(char *token)
       break;
     }
   }
+  //if file is not found, output error
   if (!detected)
   {
     printf("Error: Invalid file.\n");
@@ -760,6 +772,4 @@ int main()
 
     free(working_root);
   }
-
-  return 0;
 }

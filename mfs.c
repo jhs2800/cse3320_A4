@@ -22,6 +22,9 @@
 #include <string.h>
 #include <signal.h>
 #include <ctype.h>
+#include <stdint.h>
+#include <string.h>
+#include <stdbool.h>
 
 #define WHITESPACE " \t\n" // We want to split our command line up into tokens \
                            // so we need to define what delimits our tokens.   \
@@ -30,9 +33,8 @@
 
 #define MAX_COMMAND_SIZE 255 // The maximum command-line size
 FILE *fp;
-FILE *of, *rf;
 
-#define MAX_NUM_ARGUMENTS 5 // Mav shell only supports five arguments
+#define MAX_NUM_ARGUMENTS 5 // Since Mav shell  supports five arguments only
 #define Offset_BPB_BytesPerSec_ 11
 #define Siz_BPB_BytesPerSec 2
 
@@ -54,7 +56,7 @@ FILE *of, *rf;
 #define Entry_Len 16
 
 #define MAX_FILE_NAME_SIZE 20
-#define MAX_COMMAND_SIZE 200
+
 #define MAX_NUM_ARGUMENTS 5
 #define WHITESPACE " \t\n"
 
@@ -72,15 +74,16 @@ struct __attribute__((__packed__)) DirectoryEntry
   uint32_t DIR_FileSize;
 };
 
-int16_t BPB_BytesPerSec;
-int8_t BPB_SecPerClus;
-int16_t BPB_RsvdSecCnt;
-int8_t BPB_NumFATs;
-int16_t BPB_RootEntCnt;
-int32_t BPB_FATSz32;
-int32_t offset_CurrDir = 0;
-int32_t offset_RootDir = 0;
 struct DirectoryEntry dir[16];
+
+uint16_t BPB_BytesPerSec;
+uint8_t BPB_SecPerClus;
+uint16_t BPB_RsvdSecCnt;
+uint8_t BPB_NumFATs;
+uint16_t BPB_RootEntCnt;
+uint32_t BPB_FATSz32;
+uint32_t offset_CurrDir = 0;
+uint32_t offset_RootDir = 0;
 
 int Offset_LBA(int32_t offset)
 {
@@ -203,13 +206,14 @@ void close_Image()
 
   if (if_open == 0)
   {
-    printf("Error: File system not open.\n");
+    printf("Error: File system image must be opened first.\n");
   }
 
   else
   {
 
     fclose(fp);
+    memset(dir, 0, sizeof(dir));
     fp = NULL;
     if_open = 0;
     close_f = 1;
@@ -229,7 +233,7 @@ void open_file(char *filename)
 
     if (fp == NULL)
     {
-      printf("Error: File system image not found.\n");
+      printf("Error: The File system image not found.\n");
     }
 
     else
@@ -414,15 +418,16 @@ void get_file(char *filename)
   }
 }
 
-void cd(char *filename)
+void cd(char *dir_name)
 {
   int i;
+  //When user attempts to go to a parent directory(Ex: cd ..)
 
-  if (!strcmp(filename, ".") || !strcmp(filename, ".."))
+  if (!strcmp(dir_name, "..") || !strcmp(dir_name, "."))
   {
-    for (i = 0; i < 16; i++)
+    for (i = 0; i < Entry_Len; i++)
     {
-      if (strstr(dir[i].DIR_Name, filename) != NULL)
+      if (strstr(dir[i].DIR_Name, dir_name) != NULL)
       {
 
         if (dir[i].DIR_FirstClusterLow == 0)
@@ -439,12 +444,12 @@ void cd(char *filename)
 
   else
   {
-    for (i = 0; i < 16; i++)
+    for (i = 0; i < Entry_Len; i++)
     {
-      char temp[100];
-      strcpy(temp, filename);
+      char name[100];
+      strcpy(name, dir_name);
 
-      if (cd_compare(dir[i].DIR_Name, temp) && dir[i].Dir_Attr != 0x20)
+      if (dir[i].Dir_Attr != 0x20 && cd_compare(dir[i].DIR_Name, name))
       {
         fseek(fp, Offset_LBA(dir[i].DIR_FirstClusterLow), SEEK_SET);
         fread(&dir[0], sizeof(struct DirectoryEntry), 16, fp);
@@ -701,7 +706,14 @@ int main()
 
       if (!strcmp(token[0], "ls"))
       {
-        ls_code();
+        if (fp != NULL)
+        {
+          ls_code();
+        }
+        else
+        {
+          printf("Error: File system must be opened first.\n");
+        }
       }
       if (!strcmp(token[0], "info"))
       {
@@ -730,19 +742,24 @@ int main()
       {
         cd(token[1]);
       }
+
       if (!strcmp(token[0], "get"))
       {
         get_file(token[1]);
       }
-      /*
-      if(!strcmp(token[0], "read") && args[1] != NULL && args[2] != NULL  && args[3] == NULL)
+
+      if (!strcmp(token[0], "read") && args[1] != NULL && args[2] != NULL && args[3] == NULL)
       {
-        readd(token[1]); 
+        readd(token[1]);
+      }
+      if (!strcmp(token[0], "quit") || !strcmp(token[0], "exit"))
+      {
+        break;
       }
     }
-    */
-      free(working_root);
-    }
 
-    return 0;
+    free(working_root);
   }
+
+  return 0;
+}

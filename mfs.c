@@ -71,7 +71,6 @@ FILE *of, *rf;
 
 int if_open;
 int close_f;
-struct DirectoryEntry dir[16];
 
 struct __attribute__((__packed__)) DirectoryEntry
 {
@@ -90,6 +89,7 @@ int16_t BPB_RsvdSecCnt;
 int8_t BPB_NumFATs;
 int16_t BPB_RootEntCnt;
 int32_t BPB_FATSz32;
+struct DirectoryEntry dir[16];
 
 int Offset_LBA(int32_t offset)
 {
@@ -119,7 +119,7 @@ void Info()
 
   // print root cluster
   int root_cluster = (BPB_NumFATs * BPB_FATSz32 * BPB_BytesPerSec) + (BPB_RsvdSecCnt * BPB_BytesPerSec);
-  
+
   // printf("Root directory location: %x\n", root_cluster);
 }
 
@@ -384,7 +384,7 @@ void cd(char *filename)
     {
       if (strstr(dir[i].DIR_Name, filename) != NULL)
       {
-        
+
         if (dir[i].DIR_FirstClusterLow == 0)
         {
           dir[i].DIR_FirstClusterLow = 2;

@@ -72,6 +72,7 @@ FILE *of, *rf;
 int if_open;
 int close_f;
 
+
 struct __attribute__((__packed__)) DirectoryEntry
 {
   char DIR_Name[11];
@@ -81,6 +82,7 @@ struct __attribute__((__packed__)) DirectoryEntry
   uint8_t Unused[4];
   uint16_t DIR_FirstClusterLow;
   uint32_t DIR_FileSize;
+
 };
 
 int16_t BPB_BytesPerSec;
@@ -89,6 +91,8 @@ int16_t BPB_RsvdSecCnt;
 int8_t BPB_NumFATs;
 int16_t BPB_RootEntCnt;
 int32_t BPB_FATSz32;
+int32_t offset_CurrDir = 0;
+int32_t offset_RootDir = 0;
 struct DirectoryEntry dir[16];
 
 int Offset_LBA(int32_t offset)
@@ -130,6 +134,50 @@ int OffBal_Sec(int32_t sec)
   return ((sec - 2) * BPB_BytesPerSec) + (BPB_BytesPerSec * BPB_RsvdSecCnt) + (BPB_NumFATs * BPB_FATSz32 * BPB_BytesPerSec);
 }
 
+void name(char* filename){
+    int counter,space;
+    space = 11 - strlen(filename);
+    for(counter = 0; counter < 11; counter ++){
+        filename[counter] = toupper(filename[counter]);
+    }
+    for(counter = 0; counter < space; counter ++){
+        strcat(filename, " ");
+    }
+}
+
+int16_t NextLogicalBlock(int16_t sec)
+{
+    uint32_t FATAddr = (BPB_RsvdSecCnt * BPB_BytesPerSec) + (sec * 4);
+    int16_t val;
+    fseek(fp, FATAddr, SEEK_SET);
+    fread(&val, 2, 1, fp);
+    return val;
+}
+
+void directory_pop(int address, struct DirectoryEntry* dir)
+{
+    int counter;
+    fseek(fp, address, SEEK_SET);
+    for(counter = 0; counter < 16; counter ++){
+        fread(dir[counter].DIR_Name, 1, 11, fp);
+        dir[counter].DIR_Name[11] = 0;
+        fread(&dir[counter].Dir_Attr, 1, 1, fp);
+        fread(&dir[counter].Unused1, 1, 8, fp);
+        fread(&dir[counter].DIR_FirstClusterHigh, 2, 1, fp);
+        fread(&dir[counter].Unused, 1, 4, fp);
+        fread(&dir[counter].DIR_FirstClusterLow, 2, 1, fp);
+        fread(&dir[counter].DIR_FileSize, 4, 1, fp);
+    }
+}
+
+int LogicalBlockAdd(int32_t sec)
+{
+    if(!sec)
+        return offset_RootDir;
+    return (BPB_BytesPerSec * BPB_RsvdSecCnt) + ((sec - 2) * BPB_BytesPerSec) + (BPB_BytesPerSec * BPB_NumFATs * BPB_FATSz32);
+}
+
+/*
 int16_t Next_Sec(uint32_t sec)
 {
   uint32_t address_FAT = (BPB_BytesPerSec * BPB_RsvdSecCnt) + (sec * 4);
@@ -138,6 +186,7 @@ int16_t Next_Sec(uint32_t sec)
   fread(&val, 2, 1, fp);
   return val;
 }
+*/
 
 void Print_Info()
 {
@@ -414,6 +463,112 @@ void cd(char *filename)
   }
 }
 
+
+void read(char *token)
+{
+    //char * token;
+    char *args[20];
+    char temp_name[15];
+    int detected,counter;
+    int32_t holdAdd = offset_CurrDir; 
+    struct DirectoryEntry dir_location[16]; 
+    int32_t file_size; 
+    int16_t local_block; 
+    int data = atoi(args[2]); 
+    int offset_block = atoi(args[1])/512; 
+    int offset_byte = atoi(args[1])%512; 
+    int maxdata; 
+    int opened = 0;
+    char buffer[513]; 
+
+    if(!opened)
+    {
+        printf("File is not open.\n");
+        return;
+    }
+
+    token = strtok(args[0], "/");
+    while(1)
+    {
+        if(strlen(token) > 12)
+        {
+            printf("Error: Invalid Argument.\n");
+            return;
+        } 
+        strcpy(temp_name, token);
+        token = strtok(NULL, "/");
+        if(token == NULL)
+        {
+            break;
+        } 
+        name(temp_name);
+        directory_pop(holdAdd, dir_location);
+        detected = 0;
+        for(counter = 0; counter < 16; counter ++){
+            if(!strcmp(dir_location[counter].DIR_Name, temp_name))
+            {
+                holdAdd = LogicalBlockAdd(dir_location[counter].DIR_FirstClusterLow);
+                detected ++;
+                break;
+            }
+        }
+        if(!detected){
+            printf("Error: Invalid input.\n");
+            return;
+        }
+    }
+    //make_file(temp_name);
+    directory_pop(holdAdd, dir_location);
+    detected = 0;
+    for(counter = 0; counter < 16; counter ++)
+    {
+        if(!strcmp(dir_location[counter].DIR_Name, temp_name))
+        {
+            file_size = dir_location[counter].DIR_FileSize;
+            local_block = dir_location[counter].DIR_FirstClusterLow;
+            detected ++;
+            break;
+        }
+    }
+    if(!detected)
+    {
+        printf("Error: Invalid file.\n");
+        return;
+    }
+    if(file_size < data + atoi(args[1]))
+    {
+        printf("Error: Too much data requested.\n");
+        return;
+    }
+    for(counter = 0; counter < offset_block; counter ++)
+    {
+        local_block = NextLogicalBlock(local_block);
+    }
+    holdAdd = LogicalBlockAdd(local_block);
+    fseek(fp, holdAdd + offset_byte, SEEK_SET);
+    while(1)
+    {
+        if(data < 512)
+            maxdata = data;
+        else
+            maxdata = 512;
+        fread(buffer, 1, 512, fp);
+        buffer[maxdata] = 0;
+        for(counter = 0; counter < maxdata; counter ++){
+            printf("%x ", buffer[counter]);
+        }
+        data -= maxdata;
+        if(data == 0){
+            printf("\n");
+            return;
+        }
+        local_block = NextLogicalBlock(local_block);
+        holdAdd = LogicalBlockAdd(local_block);
+        fseek(fp, holdAdd, SEEK_SET); 
+    }
+}
+
+/*
 void readd(char *input)
 {
   int i, place, byte_size;
@@ -470,12 +625,13 @@ void readd(char *input)
 
   fclose(of);
 }
+*/
 
 int main()
 {
 
   char *cmd_str = (char *)malloc(MAX_COMMAND_SIZE);
-
+  char *args[20];
   while (1)
   {
     // Print out the mfs prompt
@@ -583,6 +739,10 @@ int main()
       if (!strcmp(token[0], "get"))
       {
         get_file(token[1]);
+      }
+      if(!strcmp(token[0], "read") && args[1] != NULL && args[2] != NULL  && args[3] == NULL)
+      {
+        read(token[1]); 
       }
     }
     free(working_root);

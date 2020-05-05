@@ -71,10 +71,8 @@ FILE *of, *rf;
 
 int if_open;
 int close_f;
+struct DirectoryEntry dir[16];
 
-// ************************************
-// **** Change names on all var !!! ******
-// ************************************
 struct __attribute__((__packed__)) DirectoryEntry
 {
   char DIR_Name[11];
@@ -86,15 +84,17 @@ struct __attribute__((__packed__)) DirectoryEntry
   uint32_t DIR_FileSize;
 };
 
-struct DirectoryEntry dir[16];
+int16_t BPB_BytesPerSec;
+int8_t BPB_SecPerClus;
+int16_t BPB_RsvdSecCnt;
+int8_t BPB_NumFATs;
+int16_t BPB_RootEntCnt;
+int32_t BPB_FATSz32;
 
-uint16_t BPB_BytesPerSec;
-uint8_t BPB_SecPerClus;
-uint16_t BPB_RsvdSecCnt;
-uint8_t BPB_NumFATs;
-uint16_t BPB_RootEntCnt;
-uint32_t BPB_FATSz32;
-
+int Offset_LBA(int32_t offset)
+{
+  return ((offset - 2) * BPB_BytesPerSec) + (BPB_BytesPerSec * BPB_RsvdSecCnt) + (BPB_NumFATs * BPB_FATSz32 * BPB_BytesPerSec);
+}
 // This function deals with  printing out information about the file system in both hexadecimal and base 10//
 void Info()
 {
@@ -119,6 +119,7 @@ void Info()
 
   // print root cluster
   int root_cluster = (BPB_NumFATs * BPB_FATSz32 * BPB_BytesPerSec) + (BPB_RsvdSecCnt * BPB_BytesPerSec);
+  
   // printf("Root directory location: %x\n", root_cluster);
 }
 
@@ -260,6 +261,37 @@ void compare(char *fName, char *fullname)
   }
   strncpy(fullname, expanded_name, strlen(expanded_name));
 }
+//Taken from compare.c file and used for cd function
+int cd_compare(char *fName, char *fullname)
+{
+
+  char expanded_name[12];
+  memset(expanded_name, ' ', 12);
+
+  char *token = strtok(fullname, ".");
+  strncpy(expanded_name, token, strlen(token));
+  token = strtok(NULL, ".");
+  if (token)
+  {
+    strncpy((char *)(expanded_name + 8), token, strlen(token));
+  }
+
+  expanded_name[11] = '\0';
+
+  int i;
+  for (i = 0; i < 11; i++)
+  {
+    expanded_name[i] = toupper(expanded_name[i]);
+  }
+  if (strncmp(expanded_name, fName, 11) == 0)
+  {
+    return 1;
+  }
+  else
+  {
+    return 0;
+  }
+}
 
 void Print_stat(char *fName)
 {
@@ -342,44 +374,47 @@ void get_file(char *filename)
   }
 }
 
-void cd(char *input)
+void cd(char *filename)
 {
   int i;
-  int detected = 0;
-  int file_size = 0;
-  int off_bal;
-  char temp_name[12];
-  char expanded_name[12];
-  expanded_name[11] = '\0';
 
-  for (i = 0; i < 16; i++)
+  if (!strcmp(filename, ".") || !strcmp(filename, ".."))
   {
-    strncpy(temp_name, dir[i].DIR_Name, 12);
-    temp_name[11] = '\0';
-    if (strcmp(expanded_name, temp_name) == 0)
-    {
-      detected = dir[i].DIR_FirstClusterLow;
-    }
-  }
-  if (detected != -1)
-  {
-    off_bal = OffBal_Sec(detected);
-    fseek(fp, off_bal, SEEK_SET);
-
     for (i = 0; i < 16; i++)
     {
-      fread(&dir[i], sizeof(struct DirectoryEntry), 1, fp);
-      memcpy(temp_name, dir[i].DIR_Name, 11);
-      temp_name[11] = '\0';
+      if (strstr(dir[i].DIR_Name, filename) != NULL)
+      {
+        
+        if (dir[i].DIR_FirstClusterLow == 0)
+        {
+          dir[i].DIR_FirstClusterLow = 2;
+        }
+
+        fseek(fp, Offset_LBA(dir[i].DIR_FirstClusterLow), SEEK_SET);
+        fread(&dir[0], sizeof(struct DirectoryEntry), 16, fp);
+        break;
+      }
     }
   }
+
   else
   {
-    printf("Error: Could not find directory.\n");
+    for (i = 0; i < 16; i++)
+    {
+      char temp[100];
+      strcpy(temp, filename);
+
+      if (cd_compare(dir[i].DIR_Name, temp) && dir[i].Dir_Attr != 0x20)
+      {
+        fseek(fp, Offset_LBA(dir[i].DIR_FirstClusterLow), SEEK_SET);
+        fread(&dir[0], sizeof(struct DirectoryEntry), 16, fp);
+        break;
+      }
+    }
   }
 }
 
-void read(char *input)
+void readd(char *input)
 {
   int i, place, byte_size;
   int detected = -1;
@@ -548,10 +583,6 @@ int main()
       if (!strcmp(token[0], "get"))
       {
         get_file(token[1]);
-      }
-      if (!strcmp(token[0], "read"))
-      {
-        read(token[1]);
       }
     }
     free(working_root);

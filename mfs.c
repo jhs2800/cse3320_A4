@@ -462,7 +462,7 @@ void cd(char *filename)
   }
 }
 
-
+//read a file at a given position and also output the number of bytes specified
 void readd(char *token)
 {
   //char * token;
@@ -480,6 +480,7 @@ void readd(char *token)
   int opened = 0;
   char buffer[513];
 
+  //if file isn't opened, output error
   if (!opened)
   {
     printf("File is not open.\n");
@@ -500,7 +501,8 @@ void readd(char *token)
     {
       break;
     }
-    name(temp_name);
+    
+    //name(temp_name);
     directory_pop(holdAdd, dir_location);
     detected = 0;
     for (counter = 0; counter < 16; counter++)
@@ -512,13 +514,14 @@ void readd(char *token)
         break;
       }
     }
+
     if (!detected)
     {
       printf("Error: Invalid input.\n");
       return;
     }
   }
-  //make_file(temp_name);
+
   directory_pop(holdAdd, dir_location);
   detected = 0;
   for (counter = 0; counter < 16; counter++)
@@ -531,6 +534,7 @@ void readd(char *token)
       break;
     }
   }
+  //if file is not found, output error
   if (!detected)
   {
     printf("Error: Invalid file.\n");
